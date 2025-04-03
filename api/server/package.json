@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "express": "^5.1.0",
+    "webcrack": "^2.15.1"
+  }
+}
