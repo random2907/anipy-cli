@@ -2,14 +2,18 @@
 
 [[package]]
 name = "anipy-api"
+<<<<<<< HEAD
 version = "3.5.7"
+=======
+version = "3.5.8"
+>>>>>>> refs/remotes/origin/master
 description = "api for anipy-cli"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "anipy_api-3.5.7-py3-none-any.whl", hash = "sha256:9043ccbcc9cf54d8d1c2bac8ce6cc1edcbeae6b73a1fe3a60feb7a0359f23404"},
-    {file = "anipy_api-3.5.7.tar.gz", hash = "sha256:228d6aa0bcc5caaa944a15713ac14a2046e21f8dd2acfefb1b07c73b56aa888d"},
+    {file = "anipy_api-3.5.8-py3-none-any.whl", hash = "sha256:68f7bf700b45abdff8886030dad93dad596771d2e24596dafd5b29c73912adbc"},
+    {file = "anipy_api-3.5.8.tar.gz", hash = "sha256:dbc624f8609d3aa821c131a19b80c3286edbd7262cb78b0521fa16536304e0e7"},
 ]
 
 [package.dependencies]
@@ -891,4 +895,8 @@ termcolor = ">=2.2.0,<2.4.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
+<<<<<<< HEAD
 content-hash = "8164fdc7f056e79903e9362e407d23a19db359a9912ed9f0c42cfacfb2c04705"
+=======
+content-hash = "b28d1d6fdab3ce433fb422b071a020d74e04dbf08340d0ba3328af9240759430"
+>>>>>>> refs/remotes/origin/master
