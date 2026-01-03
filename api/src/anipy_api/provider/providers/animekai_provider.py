@@ -1,8 +1,5 @@
-import base64
-import functools
 import json
 import re
-import urllib.parse
 from typing import TYPE_CHECKING, List
 from urllib.parse import urljoin
 from requests import Session
@@ -11,9 +8,7 @@ from requests import HTTPError
 from anipy_api.provider.base import ExternalSub
 import m3u8
 from bs4 import BeautifulSoup
-from Cryptodome.Cipher import ARC4
 from requests import Request
-from simpleeval import simple_eval
 
 from anipy_api.error import BeautifulSoupLocationError, LangTypeNotAvailableError
 from anipy_api.provider import (
@@ -43,96 +38,25 @@ if TYPE_CHECKING:
 
     from anipy_api.provider import Episode
 
-DECODE_URL: str = (
-    "https://raw.githubusercontent.com/sdaqo/anipy-cli/refs/heads/key-gen/scripts/decoder/generated/kai.json"
-)
-AnimekaiDecodeFunc = None
+DEC_API = "https://enc-dec.app/api"
 
-
-@functools.lru_cache()
-def fetch_decode():
-    req = Request("GET", DECODE_URL)
+def generate_token(text):
+    req = Request("GET", f"{DEC_API}/enc-kai?text={text}")
     res = request_page(Session(), req)
-    return json.loads(res.text)
+    return res.json()["result"]
 
+def decode_iframe_data(text):
+    req = Request("GET", f"{DEC_API}/dec-kai?text={text}")
+    res = request_page(Session(), req)
+    return res.json()["result"]
 
-def safe_eval(exp: str, n: str):
-    allowed_funcs = {
-        "transform": transform,
-        "base64_url_encode": base64_url_encode,
-        "base64_url_decode": base64_url_decode,
-        "reverse_it": reverse_it,
-        "substitute": substitute,
-        "strict_decode": strict_decode,
-        "strict_encode": strict_encode,
-    }
-    return simple_eval(exp, names={"n": n}, functions=allowed_funcs)
-
-
-def reverse_it(n: str):
-    return n[::-1]
-
-
-def transform(n: str, t: str) -> str:
-    cipher = ARC4.new(n.encode("latin-1"))
-    encrypted = cipher.encrypt(t.encode("latin-1"))
-    return encrypted.decode("latin-1")
-
-
-def substitute(input_str: str, keys: str, values: str) -> str:
-    translation_table = str.maketrans(keys, values)
-    return input_str.translate(translation_table)
-
-
-def base64_url_encode(s: str):
-    return base64.urlsafe_b64encode(s.encode("latin-1")).decode().rstrip("=")
-
-
-def base64_url_decode(s: str):
-    s = s + "=" * (4 - (len(s) % 4)) if len(s) % 4 else s
-    return base64.b64decode(s.replace("-", "+").replace("_", "/")).decode("latin-1")
-
-
-def generate_token(n: str):
-    return safe_eval(fetch_decode()["generate_token"], n)
-
-
-def decode_iframe_data(n: str):
-    return urllib.parse.unquote(safe_eval(fetch_decode()["decode_iframe_data"], n))
-
-
-def decode(n: str):
-    return urllib.parse.unquote(safe_eval(fetch_decode()["decode"], n))
-
-
-def strict_decode(n: str, ops: str):
-    ops_arr = ops.split(";")
-    padded = n + "=" * (-len(n) % 4)
-    raw = base64.b64decode(padded.replace("-", "+").replace("_", "/"))
-    result = []
-
-    for i, b in enumerate(raw):
-        op = ops_arr[i % len(ops_arr)]
-        transformed = simple_eval(op, names={"n": b})
-        result.append(transformed & 255)
-
-    return "".join(map(chr, result))
-
-
-def strict_encode(n: str, ops: str):
-    ops_arr = ops.split(";")
-    result = []
-
-    for i, ch in enumerate(n):
-        code = ord(ch)
-        op = ops_arr[i % len(ops_arr)]
-        transformed = simple_eval(op, names={"n": code})
-        result.append(transformed & 255)
-
-    byte_string = bytes(result)
-    b64 = base64.b64encode(byte_string).decode()
-    return b64.replace("+", "-").replace("/", "_").rstrip("=")
-
+def decode_mega(text):
+    req = Request("POST", f"{DEC_API}/dec-mega", json={
+        "text": text, 
+        "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+    })
+    res = request_page(Session(), req)
+    return res.json()["result"]
 
 class AnimekaiFilter(BaseFilter):
     def _apply_query(self, query: str):
@@ -176,7 +100,7 @@ class AnimekaiProvider(BaseProvider):
     """
 
     NAME: str = "animekai"
-    BASE_URL: str = "https://animekai.to"
+    BASE_URL: str = "https://anikai.to"
     FILTER_CAPS: FilterCapabilities = (
         FilterCapabilities.YEAR
         | FilterCapabilities.SEASON
@@ -357,12 +281,12 @@ class AnimekaiProvider(BaseProvider):
                 )
                 res = self._request_page(req)
                 json_res = json.loads(res.text)
-                json_res = json.loads(decode_iframe_data(json_res["result"]))
-                mega_url = re.sub(r"/(e|e2)/", "/media/", json_res["url"])
+                json_res = decode_iframe_data(json_res["result"])
+                mega_url = json_res["url"].replace("/e/", "/media/")
                 req = Request("GET", mega_url)
                 res = self._request_page(req)
                 json_res = json.loads(res.text)
-                json_res = json.loads(decode(json_res["result"]))
+                json_res = decode_mega(json_res["result"])
                 video_entry.append(json_res["sources"][0]["file"])
                 for track in json_res.get("tracks", []):
                     if track.get("kind") == "captions":
